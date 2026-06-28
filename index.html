@@ -150,7 +150,7 @@
         // 1. 同步数据
         initMqttChannel();
         // 2. 苹果/安卓多端互联真语音
-        if(AGORA_APP_ID !== "3adf636b90314ac3901887e1560c0db5") {
+        if(AGORA_APP_ID !== "YOUR_AGORA_APP_ID_HERE") {
             initAgoraEngine();
         } else {
             appendSystemMsg("⚠️ 未检测到声网 AppID，语音未激活，目前仅支持打字和状态同步。");
