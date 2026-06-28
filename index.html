@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
-    <title>TT语音连麦开黑房 - 纯前端完整版</title>
+    <title>TT语音 - 100%免费免注册版</title>
     <script src="https://cdn.bootcdn.net/ajax/libs/mqtt/4.2.8/mqtt.min.js"></script>
-    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
     
     <style>
         :root {
@@ -18,38 +18,21 @@
         }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", Arial, sans-serif; background-color: #09090d; color: var(--text-color); height: 100dvh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        body { -webkit-user-select: none; user-select: none; }
+        input { -webkit-user-select: text; user-select: text; }
         
-        /* 1. 登录/设置个人信息遮罩层适配 */
-        .login-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(10, 10, 15, 0.95); z-index: 9999;
-            display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px;
-        }
-        .login-box {
-            width: 100%; max-width: 360px; background: var(--panel-color);
-            padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08);
-            display: flex; flex-direction: column; gap: 20px;
-        }
-        .login-box h2 { text-align: center; font-size: 20px; color: #fff; }
-        .nickname-input {
-            width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-            padding: 12px 15px; border-radius: 12px; color: #fff; font-size: 15px; outline: none; text-align: center;
-        }
-        .avatar-selector {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; justify-items: center;
-        }
-        .avatar-option {
-            width: 55px; height: 55px; border-radius: 50%; background: rgba(255,255,255,0.05);
-            display: flex; justify-content: center; align-items: center; cursor: pointer; border: 2px solid transparent;
-        }
+        /* 登录遮罩层 */
+        .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 15, 0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
+        .login-box { width: 100%; max-width: 360px; background: var(--panel-color); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 20px; }
+        .login-box h2 { text-align: center; font-size: 20px; }
+        .nickname-input { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); padding: 12px 15px; border-radius: 12px; color: #fff; font-size: 15px; outline: none; text-align: center; }
+        .avatar-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .avatar-option { width: 55px; height: 55px; border-radius: 50%; background: rgba(255,255,255,0.05); display: flex; justify-content: center; align-items: center; cursor: pointer; border: 2px solid transparent; }
         .avatar-option.selected { border-color: var(--accent-color); background: rgba(123, 44, 191, 0.2); }
         .avatar-option svg { width: 40px; height: 40px; }
-        .enter-btn {
-            background: linear-gradient(135deg, #9d4edd, var(--accent-color)); color: white; border: none;
-            padding: 14px; font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer;
-        }
+        .enter-btn { background: linear-gradient(135deg, #9d4edd, var(--accent-color)); color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; }
 
-        /* 2. 主房间布局 */
+        /* 主大厅布局 */
         .room-container { width: 100%; height: 100dvh; background: radial-gradient(circle at top, #2c1a4d 0%, var(--bg-color) 70%); display: flex; flex-direction: column; position: relative; overflow: hidden; }
         @media (min-width: 768px) { .room-container { width: 414px; height: 820px; border-radius: 24px; border: 4px solid #23153c; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7); } body { background: radial-gradient(circle, #1a1525 0%, #050508 100%); } }
         
@@ -57,34 +40,23 @@
         .room-title h3 { font-size: 16px; font-weight: 600; }
         .room-title p { font-size: 11px; color: var(--text-secondary); margin-top: 2px;}
         
-        /* 麦位区 */
         .seats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px 8px; padding: 15px 10px; flex-shrink: 0; }
         .seat-item { display: flex; flex-direction: column; align-items: center; }
         .avatar-wrap { width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.06); position: relative; display: flex; justify-content: center; align-items: center; border: 2px solid transparent; }
-        /* 绿圈闪烁：声网RTC检测到此人正在说话 */
         .seat-item.speaking .avatar-wrap { border-color: var(--seat-speaking); box-shadow: 0 0 10px rgba(0, 245, 212, 0.5); }
         .avatar-wrap svg { width: 35px; height: 35px; }
         .seat-index { position: absolute; bottom: -3px; background: var(--accent-color); font-size: 9px; padding: 1px 5px; border-radius: 10px; white-space: nowrap; }
         .user-name { font-size: 11px; color: var(--text-secondary); margin-top: 6px; max-width: 58px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
 
-        /* 公屏区 */
         .chat-area { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch; }
         .msg-item { background: rgba(255,255,255,0.04); padding: 8px 12px; border-radius: 12px; font-size: 13px; max-width: 85%; align-self: flex-start; line-height: 1.4; word-break: break-all; }
         .msg-item .sender { color: #17c3b2; font-weight: bold; margin-right: 5px; display: inline-flex; align-items: center; gap: 4px; }
-        .msg-item .sender svg { width: 14px; height: 14px; vertical-align: middle; }
         .msg-system { background: rgba(234, 84, 85, 0.1); color: #ea5455; align-self: center; font-size: 11px; }
 
-        /* 3. 表情包快捷栏布局 */
-        .emoji-bar {
-            background: #191926; padding: 6px 15px; display: flex; gap: 15px; overflow-x: auto;
-            border-top: 1px solid rgba(255,255,255,0.05); flex-shrink: 0;
-            scrollbar-width: none;
-        }
+        .emoji-bar { background: #191926; padding: 6px 15px; display: flex; gap: 15px; overflow-x: auto; border-top: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; scrollbar-width: none; }
         .emoji-bar::-webkit-scrollbar { display: none; }
-        .emoji-btn { font-size: 20px; cursor: pointer; transition: transform 0.1s; }
-        .emoji-btn:active { transform: scale(1.3); }
+        .emoji-btn { font-size: 20px; cursor: pointer; }
 
-        /* 底部控制栏 */
         .bottom-bar { padding: 10px 15px calc(10px + env(safe-area-inset-bottom)); background: #161622; display: flex; align-items: center; gap: 10px; flex-shrink: 0; z-index: 99; }
         .input-box { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 20px; color: #fff; font-size: 14px; outline: none; }
         .btn { background: var(--accent-color); border: none; color: white; padding: 10px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; font-weight: bold; }
@@ -96,34 +68,31 @@
 
 <div class="login-overlay" id="loginOverlay">
     <div class="login-box">
-        <h2>创建开黑档案</h2>
-        <input type="text" class="nickname-input" id="nicknameInput" placeholder="输入你的开黑昵称" maxlength="8">
-        <p style="font-size:12px; color:var(--text-secondary); text-align:center;">选择一个系统头像</p>
+        <h2>创建免签开黑档案</h2>
+        <input type="text" class="nickname-input" id="nicknameInput" placeholder="输入昵称(请用英文或数字)" maxlength="12">
+        <p style="font-size:12px; color:var(--text-secondary); text-align:center;">选择头像</p>
         <div class="avatar-selector" id="avatarSelector">
-            <div class="avatar-option selected" data-index="0" onclick="selectAvatar(0)"><svg viewBox="0 0 1024 1024"><path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="#ff4d6d"/></svg></div>
-            <div class="avatar-option" data-index="1" onclick="selectAvatar(1)"><svg viewBox="0 0 1024 1024"><path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="#00f5d4"/></svg></div>
-            <div class="avatar-option" data-index="2" onclick="selectAvatar(2)"><svg viewBox="0 0 1024 1024"><path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="#9d4edd"/></svg></div>
-            <div class="avatar-option" data-index="3" onclick="selectAvatar(3)"><svg viewBox="0 0 1024 1024"><path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="#ffb703"/></svg></div>
+            <div class="avatar-option selected" onclick="selectAvatar(0)"><svg viewBox="0 0 1024 1024"><path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="#ff4d6d"/></svg></div>
+            <div class="avatar-option" onclick="selectAvatar(1)"><svg viewBox="0 0 1024 1024"><path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="#00f5d4"/></svg></div>
+            <div class="avatar-option" onclick="selectAvatar(2)"><svg viewBox="0 0 1024 1024"><path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="#9d4edd"/></svg></div>
+            <div class="avatar-option" onclick="selectAvatar(3)"><svg viewBox="0 0 1024 1024"><path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="#ffb703"/></svg></div>
         </div>
-        <button class="enter-btn" onclick="joinRoomAction()">连麦进入房间</button>
+        <button class="enter-btn" onclick="joinRoomAction()">100%免费连麦进房</button>
     </div>
 </div>
 
 <div class="room-container">
     <div class="room-header">
         <div class="room-title">
-            <h3>TT语音·多人连麦大厅</h3>
-            <p>真实语音专属房间频道: <span style="color:#00f5d4;" id="chanName">Room_999</span></p>
+            <h3>TT语音·P2P免签开黑房</h3>
+            <p>去中心化公共频道: <span style="color:#00f5d4;">Free_Zone_999</span></p>
         </div>
         <button class="btn" style="background:#ea5455;" onclick="leaveRoom()">退出</button>
     </div>
-
     <div class="seats-grid" id="seatsGrid"></div>
-
     <div class="chat-area" id="chatArea">
-        <div class="msg-item msg-system">【系统公告】已启用声网高保真全双工语音流。默认闭麦，点击🎤图标即可实时说话。</div>
+        <div class="msg-item msg-system">【系统】已切换至免费 P2P 语音流。由于没有中转服务器，首次开麦需双方均开启方可互通。</div>
     </div>
-
     <div class="emoji-bar">
         <span class="emoji-btn" onclick="insertEmoji('😂')">😂</span>
         <span class="emoji-btn" onclick="insertEmoji('🔥')">🔥</span>
@@ -131,75 +100,56 @@
         <span class="emoji-btn" onclick="insertEmoji('❤️')">❤️</span>
         <span class="emoji-btn" onclick="insertEmoji('👑')">👑</span>
         <span class="emoji-btn" onclick="insertEmoji('💩')">💩</span>
-        <span class="emoji-btn" onclick="insertEmoji('🤔')">🤔</span>
-        <span class="emoji-btn" onclick="insertEmoji('🌟')">🌟</span>
     </div>
-
     <div class="bottom-bar">
         <div class="btn-icon" id="micBtn" onclick="toggleMic()">🔇</div>
-        <input type="text" class="input-box" id="msgInput" placeholder="畅所欲言..." autocomplete="off">
+        <input type="text" class="input-box" id="msgInput" placeholder="直接打字或发表情..." autocomplete="off">
         <button class="btn" onclick="sendMsg()">发送</button>
     </div>
 </div>
 
 <script>
-    // 4种内置头像的颜色定义
     const AVATAR_COLORS = ["#ff4d6d", "#00f5d4", "#9d4edd", "#ffb703"];
-    function getAvatarSvg(color) {
-        return `<svg viewBox="0 0 1024 1024"><path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="${color}"/></svg>`;
-    }
-
-    // 核心参数设置
-    // ⚠️重要：请去声网官网（agora.io）注册一个免费账号，把创建项目拿到的 AppID 粘贴在下面！
-    // 否则只有公屏文字能互通，无法启动真实的多人语音！
-    const AGORA_APP_ID = "4e11b7b484534a61ad87f8a63dec0992"; 
-    const CHANNEL_NAME = "perfect_tt_room_999";
+    const CHANNEL_NAME = "pure_free_tt_room_999";
 
     let mqttClient = null;
-    let agoraClient = null;
-    let localAudioTrack = null;
-    
-    let selectedAvatarIndex = 0;
+    let myPeer = null;         // PeerJS 核心对象
+    let localStream = null;    // 本地麦克风声音流
     let myNickname = "";
-    let isMuted = true; // 默认进去是闭麦状态
-    
-    // 维护一个房间内所有人（带座位映射）的列表
+    let selectedAvatarIndex = 0;
+    let isMuted = true;
     let roomUsers = {}; 
 
     function selectAvatar(index) {
         selectedAvatarIndex = index;
         const options = document.querySelectorAll('.avatar-option');
-        options.forEach((opt, i) => {
-            if(i === index) opt.classList.add('selected'); else opt.classList.remove('selected');
-        });
+        options.forEach((opt, i) => opt.classList.toggle('selected', i === index));
     }
 
-    // 用户设置好昵称和头像，点击进入房间
+    function insertEmoji(emoji) {
+        const input = document.getElementById('msgInput');
+        input.value += emoji; input.focus();
+    }
+
+    // 核心启动逻辑
     function joinRoomAction() {
         const input = document.getElementById('nicknameInput').value.trim();
-        if(!input) {
-            alert("请输入一个拉风的开黑昵称！");
+        // 核心避坑：免费公共Peer服务器对中文ID支持极差，强制要求使用英文或数字
+        const reg = /^[A-Za-z0-9]+$/;
+        if(!input || !reg.test(input)) {
+            alert("为了免费通道稳定，昵称必须是纯英文或数字！");
             return;
         }
-        myNickname = input;
+        myNickname = input + "_" + Math.floor(Math.random()*100); // 加随机数防止重名死锁
 
-        // 隐藏登录框
         document.getElementById('loginOverlay').style.display = 'none';
-
-        // 初始化基础麦位
         renderBlankSeats();
 
-        // 1. 启动 MQTT 同步通道（文字、头像、行为）
+        // 1. 启动免费 P2P 语音引擎
+        initFreeVoiceEngine();
+        // 2. 启动数据同步
         initMqttChannel();
 
-        // 2. 启动声网真正的多人语音
-        if(AGORA_APP_ID !== "YOUR_AGORA_APP_ID_HERE") {
-            initAgoraVoice();
-        } else {
-            appendSystemMsg("⚠️ 未检测到有效的声网 AppID，语音通话已被自动挂起，目前仅支持文字和状态同步。");
-        }
-
-        // 绑定输入框回车
         document.getElementById('msgInput').addEventListener('keypress', function(e) {
             if(e.key === 'Enter') { sendMsg(); this.blur(); }
         });
@@ -221,75 +171,119 @@
         }
     }
 
-    // 快捷插入表情
-    function insertEmoji(emoji) {
-        const input = document.getElementById('msgInput');
-        input.value += emoji;
-        input.focus();
+    // --- 🔑 核心解密：100% 免费的 P2P 语音通话实现 ---
+    function initFreeVoiceEngine() {
+        // 创建一个基于 PeerJS 免费云的节点
+        myPeer = new Peer(myNickname);
+
+        myPeer.on('open', (id) => {
+            console.log('我的免费语音P2P节点ID:', id);
+        });
+
+        // 核心机制：当房间里的“其他人”打电话呼叫我时，我该怎么处理
+        myPeer.on('call', (call) => {
+            // 如果我已经拿到了麦克风流，直接回应他；如果没有，用一个空的空流回应
+            if(localStream) {
+                call.answer(localStream);
+            } else {
+                // 创建一个静音虚轨，用以维持 P2P 通道建立
+                const fakeContext = new (window.AudioContext || window.webkitAudioContext)();
+                const fakeOsc = fakeContext.createOscillator();
+                const fakeDst = fakeContext.createMediaStreamDestination();
+                fakeOsc.connect(fakeDst);
+                call.answer(fakeDst.stream);
+            }
+
+            // 当收到对方的声音传过来时，立刻在手机里播放
+            call.on('stream', (remoteStream) => {
+                playRemoteAudio(remoteStream);
+            });
+        });
     }
 
-    // --- 音频流逻辑 (声网 Agora) ---
-    async function initAgoraVoice() {
-        try {
-            // 创建实时语音客户端，针对多人开黑（RTC模式，智能低延时高保真）
-            agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-            
-            // 监听房间里“别人开麦”的动作，自动播放他们的声音
-            agoraClient.on("user-published", async (user, mediaType) => {
-                await agoraClient.subscribe(user, mediaType);
-                if (mediaType === "audio") {
-                    user.audioTrack.play(); // 真正从手机耳机/喇叭播放别人的语音
-                }
-            });
+    // 播放远程队友传过来的声音
+    function playRemoteAudio(stream) {
+        // 防止重复创建标签
+        const audioId = `audio_${stream.id}`;
+        if(document.getElementById(audioId)) return;
 
-            // 监听别人说话的音量等级（实现麦位绿圈闪烁动画效果）
-            agoraClient.enableAudioVolumeIndicator();
-            agoraClient.on("volume-indicator", volumes => {
-                volumes.forEach(volume => {
-                    // volume.uid 是说话者的唯一标识
-                    // 根据说话音量大小动态给对应座位加减 .speaking 样式
-                    syncVisualSpeakingEffect(volume.uid, volume.level > 5);
+        const audio = document.createElement('audio');
+        audio.id = audioId;
+        audio.srcObject = stream;
+        audio.autoplay = true;
+        audio.controls = false;
+        document.body.appendChild(audio);
+    }
+
+    // 当我自己选择“开麦”时，主动呼叫房间里的所有其他人
+    async function toggleMic() {
+        isMuted = !isMuted;
+        const micBtn = document.getElementById('micBtn');
+
+        if(!isMuted) {
+            try {
+                // 采集硬件声音
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true }
                 });
-            });
+                
+                micBtn.innerText = "🎤";
+                micBtn.classList.remove('active');
+                appendSystemMsg("你已开启麦克风！正在发起点对点语音互连...");
 
-            // 纯前端项目使用免 Token 模式测试，加入语音房间
-            // 这里的 uid 传入我们在 MQTT 中广播的昵称
-            await agoraClient.join(AGORA_APP_ID, CHANNEL_NAME, null, myNickname);
-            appendSystemMsg("🔊 真实多人语音引擎就绪，已打通全球跨端网络。");
+                // 【核心P2P扩散】：主动给房间里在线的每一个队友拨打语音电话
+                Object.keys(roomUsers).forEach(username => {
+                    if(username !== myNickname) {
+                        const call = myPeer.call(username, localStream);
+                        if(call) {
+                            call.on('stream', (remoteStream) => {
+                                playRemoteAudio(remoteStream);
+                            });
+                        }
+                    }
+                });
 
-        } catch (e) {
-            console.error("语音引擎初始化失败", e);
-            appendSystemMsg("语音连麦启动失败，请检查浏览器麦克风授权。");
+            } catch (err) {
+                isMuted = true;
+                alert("开麦失败，请允许网页使用你的麦克风权限！");
+                return;
+            }
+        } else {
+            // 关闭麦克风硬件采集
+            if(localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            micBtn.innerText = "🔇";
+            micBtn.classList.add('active');
+            appendSystemMsg("你已闭麦");
         }
+
+        publishMsg({ type: 'mic', user: myNickname, isMuted: isMuted });
     }
 
-    // --- 数据信息同步逻辑 (MQTT 网关) ---
+    // --- 数据同步（依然使用免费的公共MQTT网关） ---
     function initMqttChannel() {
         const brokerUrl = 'wss://broker.emqx.io:8084/mqtt'; 
-        mqttClient = mqtt.connect(brokerUrl, { connectTimeout: 4000, clientId: 'tt_u_' + Math.random().toString(16).substr(2, 8) });
+        mqttClient = mqtt.connect(brokerUrl, { connectTimeout: 4000, clientId: 'free_tt_' + Math.random().toString(16).substr(2, 8) });
 
         mqttClient.on('connect', () => {
             mqttClient.subscribe(CHANNEL_NAME);
-            // 进房时，把自己的名字、选好的系统头像索引广播给房间里所有人
             publishMsg({ type: 'join', user: myNickname, avatarIdx: selectedAvatarIndex, isMuted: isMuted });
         });
 
         mqttClient.on('message', (topic, packet) => {
             try {
                 const data = JSON.parse(packet.toString());
-                
                 if (data.type === 'join') {
-                    // 有人来了，存入内存，重新排座位
                     roomUsers[data.user] = { avatarIdx: data.avatarIdx, isMuted: data.isMuted };
                     refreshSeatsLayout();
-                    appendSystemMsg(`${data.user} 披荆斩棘进入房间`);
-                    
-                    // 新人进房，老人主动再发送一次自己的状态，确保新人在麦位上能看到老人
+                    appendSystemMsg(`${data.user} 坐上了麦位`);
                     if(data.user !== myNickname) {
-                        publishMsg({ type: 'sync_response', user: myNickname, avatarIdx: selectedAvatarIndex, isMuted: isMuted });
+                        publishMsg({ type: 'sync_resp', user: myNickname, avatarIdx: selectedAvatarIndex, isMuted: isMuted });
                     }
                 } 
-                else if (data.type === 'sync_response') {
+                else if (data.type === 'sync_resp') {
                     roomUsers[data.user] = { avatarIdx: data.avatarIdx, isMuted: data.isMuted };
                     refreshSeatsLayout();
                 }
@@ -308,125 +302,62 @@
         });
     }
 
-    // 根据当前在线人的数量和头像，重新刷新渲染8个座位
     function refreshSeatsLayout() {
-        renderBlankSeats(); // 先清空
+        renderBlankSeats();
         const users = Object.keys(roomUsers);
-        
-        // 依次把在线的用户排入 1 ~ 8 麦位
         users.forEach((username, index) => {
-            if(index >= 8) return; // 满了就进观众席
+            if(index >= 8) return;
             const seatId = index + 1;
             const userData = roomUsers[username];
             const seatDom = document.getElementById(`seat_${seatId}`);
-            
             if(seatDom) {
-                // 替换为该用户选的颜色头像
                 seatDom.querySelector('.avatar-wrap svg').innerHTML = `<path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="${AVATAR_COLORS[userData.avatarIdx]}"/>`;
                 const nameSpan = seatDom.querySelector('.user-name');
-                nameSpan.innerText = username;
+                nameSpan.innerText = username.split('_')[0]; // 去掉随机数后缀显示
                 nameSpan.style.color = "#ffffff";
-                
-                // 如果此人开麦了，在名字后面画个小绿点或标识
                 if(!userData.isMuted) {
                     nameSpan.innerText += " 🎙️";
+                    seatDom.classList.add('speaking');
+                } else {
+                    seatDom.classList.remove('speaking');
                 }
             }
         });
-    }
-
-    // 动态绿圈说话特效
-    function syncVisualSpeakingEffect(uid, isSpeaking) {
-        // uid 就是声网传回的用户标识（我们设为了昵称）
-        // 找到这个昵称在第几个座位，给那个座位加减外发光
-        const users = Object.keys(roomUsers);
-        const index = users.indexOf(uid);
-        if(index !== -1 && index < 8) {
-            const seatDom = document.getElementById(`seat_${index + 1}`);
-            if(seatDom) {
-                if(isSpeaking) seatDom.classList.add('speaking'); else seatDom.classList.remove('speaking');
-            }
-        }
-    }
-
-    // 控制连麦开关
-    async function toggleMic() {
-        isMuted = !isMuted;
-        const micBtn = document.getElementById('micBtn');
-
-        // 如果配置了声网，控制真实音频流的推送
-        if(agoraClient) {
-            if(!localAudioTrack) {
-                // 采集手机/电脑麦克风硬件声音
-                localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
-                    AEC: true, ANS: true, AGC: true // 自动回声消除、智能降噪、音量增益
-                });
-                await agoraClient.publish([localAudioTrack]);
-            }
-            // 真正设置硬件静音或解禁
-            await localAudioTrack.setEnabled(!isMuted);
-        }
-
-        if(isMuted) {
-            micBtn.innerText = "🔇";
-            micBtn.classList.add('active');
-            appendSystemMsg("已闭麦");
-        } else {
-            micBtn.innerText = "🎤";
-            micBtn.classList.remove('active');
-            appendSystemMsg("你已开麦，大家能听到你说话了！");
-        }
-
-        // 把自己的麦克风改变状态广播给全屋人更新状态
-        publishMsg({ type: 'mic', user: myNickname, isMuted: isMuted });
     }
 
     function sendMsg() {
         const input = document.getElementById('msgInput');
         const text = input.value.trim();
         if(!text) return;
-
         publishMsg({ type: 'chat', sender: myNickname, avatarIdx: selectedAvatarIndex, text: text });
         input.value = '';
     }
 
     function publishMsg(obj) {
-        if(mqttClient && mqttClient.connected) {
-            mqttClient.publish(CHANNEL_NAME, JSON.stringify(obj), { qos: 0 });
-        }
+        if(mqttClient && mqttClient.connected) mqttClient.publish(CHANNEL_NAME, JSON.stringify(obj), { qos: 0 });
     }
 
     function appendChatMsg(sender, avatarIdx, text) {
         const chatArea = document.getElementById('chatArea');
-        const msgDiv = document.createElement('div');
-        msgDiv.className = 'msg-item';
-        
-        const senderSpan = document.createElement('span');
-        senderSpan.className = 'sender';
-        // 名字前带上对应头像颜色的微缩圆形小标
-        senderSpan.innerHTML = `<span style="width:8px;height:8px;background:${AVATAR_COLORS[avatarIdx]};border-radius:50%;display:inline-block;"></span> ` + (sender === myNickname ? '我: ' : `${sender}: `);
+        const msgDiv = document.createElement('div'); msgDiv.className = 'msg-item';
+        const senderSpan = document.createElement('span'); senderSpan.className = 'sender';
+        senderSpan.innerHTML = `<span style="width:8px;height:8px;background:${AVATAR_COLORS[avatarIdx]};border-radius:50%;display:inline-block;"></span> ` + (sender === myNickname ? '我: ' : `${sender.split('_')[0]}: `);
         if(sender === myNickname) senderSpan.style.color = "#9d4edd";
-
-        const textSpan = document.createElement('span');
-        textSpan.textContent = text; 
-        
-        msgDiv.appendChild(senderSpan);
-        msgDiv.appendChild(textSpan);
+        const textSpan = document.createElement('span'); textSpan.textContent = text; 
+        msgDiv.appendChild(senderSpan); msgDiv.appendChild(textSpan);
         chatArea.appendChild(msgDiv);
         chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: 'smooth' });
     }
 
     function appendSystemMsg(text) {
         const chatArea = document.getElementById('chatArea');
-        const msgDiv = document.createElement('div');
-        msgDiv.className = 'msg-item msg-system';
-        msgDiv.textContent = text;
-        chatArea.appendChild(msgDiv);
+        const msgDiv = document.createElement('div'); msgDiv.className = 'msg-item msg-system';
+        msgDiv.textContent = text; chatArea.appendChild(msgDiv);
         chatArea.scrollTop = chatArea.scrollHeight;
     }
 
     function leaveRoom() {
-        if(confirm('确定退出开黑房吗？')) {
+        if(confirm('确定退出吗？')) {
             publishMsg({ type: 'leave', user: myNickname });
             window.location.reload();
         }
