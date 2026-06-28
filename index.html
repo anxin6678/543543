@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
-    <title>TT语音 - 100%免费免注册版</title>
+    <title>TT语音 - 苹果/安卓完美畅连版</title>
     <script src="https://cdn.bootcdn.net/ajax/libs/mqtt/4.2.8/mqtt.min.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
     
@@ -17,14 +17,12 @@
             --seat-speaking: #00f5d4;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", Arial, sans-serif; background-color: #09090d; color: var(--text-color); height: 100dvh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        body { -webkit-user-select: none; user-select: none; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", Arial, sans-serif; background-color: #09090d; color: var(--text-color); height: 100dvh; display: flex; justify-content: center; align-items: center; overflow: hidden; -webkit-user-select: none; user-select: none; }
         input { -webkit-user-select: text; user-select: text; }
         
-        /* 登录遮罩层 */
-        .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 15, 0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
+        .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 15, 0.96); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
         .login-box { width: 100%; max-width: 360px; background: var(--panel-color); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 20px; }
-        .login-box h2 { text-align: center; font-size: 20px; }
+        .login-box h2 { text-align: center; font-size: 19px; }
         .nickname-input { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); padding: 12px 15px; border-radius: 12px; color: #fff; font-size: 15px; outline: none; text-align: center; }
         .avatar-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
         .avatar-option { width: 55px; height: 55px; border-radius: 50%; background: rgba(255,255,255,0.05); display: flex; justify-content: center; align-items: center; cursor: pointer; border: 2px solid transparent; }
@@ -32,7 +30,6 @@
         .avatar-option svg { width: 40px; height: 40px; }
         .enter-btn { background: linear-gradient(135deg, #9d4edd, var(--accent-color)); color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; }
 
-        /* 主大厅布局 */
         .room-container { width: 100%; height: 100dvh; background: radial-gradient(circle at top, #2c1a4d 0%, var(--bg-color) 70%); display: flex; flex-direction: column; position: relative; overflow: hidden; }
         @media (min-width: 768px) { .room-container { width: 414px; height: 820px; border-radius: 24px; border: 4px solid #23153c; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7); } body { background: radial-gradient(circle, #1a1525 0%, #050508 100%); } }
         
@@ -66,10 +63,21 @@
 </head>
 <body>
 
+<div id="iosAudioPool" style="display: none;">
+    <audio id="ios_player_1" autoplay playsinline></audio>
+    <audio id="ios_player_2" autoplay playsinline></audio>
+    <audio id="ios_player_3" autoplay playsinline></audio>
+    <audio id="ios_player_4" autoplay playsinline></audio>
+    <audio id="ios_player_5" autoplay playsinline></audio>
+    <audio id="ios_player_6" autoplay playsinline></audio>
+    <audio id="ios_player_7" autoplay playsinline></audio>
+    <audio id="ios_player_8" autoplay playsinline></audio>
+</div>
+
 <div class="login-overlay" id="loginOverlay">
     <div class="login-box">
-        <h2>创建免签开黑档案</h2>
-        <input type="text" class="nickname-input" id="nicknameInput" placeholder="输入昵称(请用英文或数字)" maxlength="12">
+        <h2>创建全端畅连连麦档案</h2>
+        <input type="text" class="nickname-input" id="nicknameInput" placeholder="输入纯英文或数字昵称" maxlength="12">
         <p style="font-size:12px; color:var(--text-secondary); text-align:center;">选择头像</p>
         <div class="avatar-selector" id="avatarSelector">
             <div class="avatar-option selected" onclick="selectAvatar(0)"><svg viewBox="0 0 1024 1024"><path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="#ff4d6d"/></svg></div>
@@ -77,21 +85,21 @@
             <div class="avatar-option" onclick="selectAvatar(2)"><svg viewBox="0 0 1024 1024"><path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="#9d4edd"/></svg></div>
             <div class="avatar-option" onclick="selectAvatar(3)"><svg viewBox="0 0 1024 1024"><path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="#ffb703"/></svg></div>
         </div>
-        <button class="enter-btn" onclick="joinRoomAction()">100%免费连麦进房</button>
+        <button class="enter-btn" onclick="joinRoomAction()">激活苹果/安卓语音通道并进房</button>
     </div>
 </div>
 
 <div class="room-container">
     <div class="room-header">
         <div class="room-title">
-            <h3>TT语音·P2P免签开黑房</h3>
-            <p>去中心化公共频道: <span style="color:#00f5d4;">Free_Zone_999</span></p>
+            <h3>TT语音·全端畅联房间</h3>
+            <p>频道: <span style="color:#00f5d4;">Perfect_Zone_999</span></p>
         </div>
         <button class="btn" style="background:#ea5455;" onclick="leaveRoom()">退出</button>
     </div>
     <div class="seats-grid" id="seatsGrid"></div>
     <div class="chat-area" id="chatArea">
-        <div class="msg-item msg-system">【系统】已切换至免费 P2P 语音流。由于没有中转服务器，首次开麦需双方均开启方可互通。</div>
+        <div class="msg-item msg-system">【温馨提示】iPhone/iPad 用户如果听不到声音，请检查手机左上角的【物理静音拨片】是否露出了红点，请将其关闭。</div>
     </div>
     <div class="emoji-bar">
         <span class="emoji-btn" onclick="insertEmoji('😂')">😂</span>
@@ -99,26 +107,31 @@
         <span class="emoji-btn" onclick="insertEmoji('👍')">👍</span>
         <span class="emoji-btn" onclick="insertEmoji('❤️')">❤️</span>
         <span class="emoji-btn" onclick="insertEmoji('👑')">👑</span>
-        <span class="emoji-btn" onclick="insertEmoji('💩')">💩</span>
     </div>
     <div class="bottom-bar">
         <div class="btn-icon" id="micBtn" onclick="toggleMic()">🔇</div>
-        <input type="text" class="input-box" id="msgInput" placeholder="直接打字或发表情..." autocomplete="off">
+        <input type="text" class="input-box" id="msgInput" placeholder="畅聊开黑中..." autocomplete="off">
         <button class="btn" onclick="sendMsg()">发送</button>
     </div>
 </div>
 
 <script>
     const AVATAR_COLORS = ["#ff4d6d", "#00f5d4", "#9d4edd", "#ffb703"];
-    const CHANNEL_NAME = "pure_free_tt_room_999";
+    const CHANNEL_NAME = "pure_universal_tt_room_999";
 
     let mqttClient = null;
-    let myPeer = null;         // PeerJS 核心对象
-    let localStream = null;    // 本地麦克风声音流
+    let myPeer = null;         
+    let localStream = null;    
     let myNickname = "";
     let selectedAvatarIndex = 0;
     let isMuted = true;
     let roomUsers = {}; 
+
+    // 微信内置浏览器内核特权解锁机制：强制激活音频基础桥接
+    document.addEventListener("WeixinJSBridgeReady", function () {
+        const fakeCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if(fakeCtx) fakeCtx.resume();
+    }, false);
 
     function selectAvatar(index) {
         selectedAvatarIndex = index;
@@ -131,23 +144,27 @@
         input.value += emoji; input.focus();
     }
 
-    // 核心启动逻辑
     function joinRoomAction() {
         const input = document.getElementById('nicknameInput').value.trim();
-        // 核心避坑：免费公共Peer服务器对中文ID支持极差，强制要求使用英文或数字
         const reg = /^[A-Za-z0-9]+$/;
         if(!input || !reg.test(input)) {
-            alert("为了免费通道稳定，昵称必须是纯英文或数字！");
+            alert("苹果通道下，昵称必须是纯英文或数字！");
             return;
         }
-        myNickname = input + "_" + Math.floor(Math.random()*100); // 加随机数防止重名死锁
+        myNickname = input + "_" + Math.floor(Math.random()*100); 
+
+        // 苹果核心修复：在点击事件的瞬间，“赐福（Bless）”并强行播放并激活 HTML 里的所有音频播放器
+        for (let i = 1; i <= 8; i++) {
+            const player = document.getElementById(`ios_player_${i}`);
+            if (player) {
+                player.play().catch(() => {}); // 强行解除 iOS 的首次自动播放封锁
+            }
+        }
 
         document.getElementById('loginOverlay').style.display = 'none';
         renderBlankSeats();
 
-        // 1. 启动免费 P2P 语音引擎
         initFreeVoiceEngine();
-        // 2. 启动数据同步
         initMqttChannel();
 
         document.getElementById('msgInput').addEventListener('keypress', function(e) {
@@ -171,22 +188,25 @@
         }
     }
 
-    // --- 🔑 核心解密：100% 免费的 P2P 语音通话实现 ---
     function initFreeVoiceEngine() {
-        // 创建一个基于 PeerJS 免费云的节点
-        myPeer = new Peer(myNickname);
+        // 苹果/大陆网络核心修复：由于大陆4G/5G严格的NAT隔离，必须手动配置国内可畅通握手的多线 STUN 服务器，否则苹果跨网无法穿透
+        const peerConfig = {
+            config: {
+                'iceServers': [
+                    { urls: 'stun:stun.ekiga.net' },
+                    { urls: 'stun:stun.ideasip.com' },
+                    { urls: 'stun:stun.schlund.de' },
+                    { urls: 'stun:stun.voiparound.com' }
+                ]
+            }
+        };
 
-        myPeer.on('open', (id) => {
-            console.log('我的免费语音P2P节点ID:', id);
-        });
+        myPeer = new Peer(myNickname, peerConfig);
 
-        // 核心机制：当房间里的“其他人”打电话呼叫我时，我该怎么处理
         myPeer.on('call', (call) => {
-            // 如果我已经拿到了麦克风流，直接回应他；如果没有，用一个空的空流回应
             if(localStream) {
                 call.answer(localStream);
             } else {
-                // 创建一个静音虚轨，用以维持 P2P 通道建立
                 const fakeContext = new (window.AudioContext || window.webkitAudioContext)();
                 const fakeOsc = fakeContext.createOscillator();
                 const fakeDst = fakeContext.createMediaStreamDestination();
@@ -194,50 +214,56 @@
                 call.answer(fakeDst.stream);
             }
 
-            // 当收到对方的声音传过来时，立刻在手机里播放
             call.on('stream', (remoteStream) => {
-                playRemoteAudio(remoteStream);
+                playRemoteAudio(call.peer, remoteStream);
             });
         });
     }
 
-    // 播放远程队友传过来的声音
-    function playRemoteAudio(stream) {
-        // 防止重复创建标签
-        const audioId = `audio_${stream.id}`;
-        if(document.getElementById(audioId)) return;
-
-        const audio = document.createElement('audio');
-        audio.id = audioId;
-        audio.srcObject = stream;
-        audio.autoplay = true;
-        audio.controls = false;
-        document.body.appendChild(audio);
+    // 苹果核心修复：绝对不用 JS 动态创建空 audio，而是把流绑入已经经过点击事件“赐福”过的固定标签中
+    function playRemoteAudio(remoteUid, stream) {
+        const users = Object.keys(roomUsers);
+        const index = users.indexOf(remoteUid);
+        if (index !== -1 && index < 8) {
+            const seatId = index + 1;
+            const iosPlayer = document.getElementById(`ios_player_${seatId}`);
+            if (iosPlayer && iosPlayer.srcObject !== stream) {
+                iosPlayer.srcObject = stream;
+                // 用 Promise 再次防御 iOS 播放挂起错误
+                iosPlayer.play().catch(err => {
+                    console.log("苹果自动播放被拦截防御，追加手动触发机制");
+                });
+            }
+        }
     }
 
-    // 当我自己选择“开麦”时，主动呼叫房间里的所有其他人
     async function toggleMic() {
         isMuted = !isMuted;
         const micBtn = document.getElementById('micBtn');
 
         if(!isMuted) {
             try {
-                // 采集硬件声音
+                // 苹果核心修复：捕获更详尽的系统麦克风请求约束
                 localStream = await navigator.mediaDevices.getUserMedia({
-                    audio: { echoCancellation: true, noiseSuppression: true }
+                    audio: { 
+                        echoCancellation: true, 
+                        noiseSuppression: true,
+                        volume: 1.0
+                    },
+                    video: false
                 });
                 
                 micBtn.innerText = "🎤";
                 micBtn.classList.remove('active');
-                appendSystemMsg("你已开启麦克风！正在发起点对点语音互连...");
+                appendSystemMsg("麦克风已成功激活！");
 
-                // 【核心P2P扩散】：主动给房间里在线的每一个队友拨打语音电话
+                // 主动呼叫已经在座的各位
                 Object.keys(roomUsers).forEach(username => {
                     if(username !== myNickname) {
                         const call = myPeer.call(username, localStream);
                         if(call) {
                             call.on('stream', (remoteStream) => {
-                                playRemoteAudio(remoteStream);
+                                playRemoteAudio(username, remoteStream);
                             });
                         }
                     }
@@ -245,27 +271,25 @@
 
             } catch (err) {
                 isMuted = true;
-                alert("开麦失败，请允许网页使用你的麦克风权限！");
+                alert("苹果设备未获得麦克风授权，或当前未处于 HTTPS 安全环境下！");
                 return;
             }
         } else {
-            // 关闭麦克风硬件采集
             if(localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
             }
             micBtn.innerText = "🔇";
             micBtn.classList.add('active');
-            appendSystemMsg("你已闭麦");
+            appendSystemMsg("你已关闭麦克风");
         }
 
         publishMsg({ type: 'mic', user: myNickname, isMuted: isMuted });
     }
 
-    // --- 数据同步（依然使用免费的公共MQTT网关） ---
     function initMqttChannel() {
         const brokerUrl = 'wss://broker.emqx.io:8084/mqtt'; 
-        mqttClient = mqtt.connect(brokerUrl, { connectTimeout: 4000, clientId: 'free_tt_' + Math.random().toString(16).substr(2, 8) });
+        mqttClient = mqtt.connect(brokerUrl, { connectTimeout: 4000, clientId: 'free_ios_tt_' + Math.random().toString(16).substr(2, 8) });
 
         mqttClient.on('connect', () => {
             mqttClient.subscribe(CHANNEL_NAME);
@@ -278,7 +302,7 @@
                 if (data.type === 'join') {
                     roomUsers[data.user] = { avatarIdx: data.avatarIdx, isMuted: data.isMuted };
                     refreshSeatsLayout();
-                    appendSystemMsg(`${data.user} 坐上了麦位`);
+                    appendSystemMsg(`${data.user.split('_')[0]} 踏入大厅`);
                     if(data.user !== myNickname) {
                         publishMsg({ type: 'sync_resp', user: myNickname, avatarIdx: selectedAvatarIndex, isMuted: isMuted });
                     }
@@ -295,6 +319,13 @@
                     refreshSeatsLayout();
                 }
                 else if (data.type === 'leave') {
+                    // 当别人离开时，清理他的播放器
+                    const users = Object.keys(roomUsers);
+                    const index = users.indexOf(data.user);
+                    if(index !== -1) {
+                        const p = document.getElementById(`ios_player_${index+1}`);
+                        if(p) p.srcObject = null;
+                    }
                     delete roomUsers[data.user];
                     refreshSeatsLayout();
                 }
@@ -313,7 +344,7 @@
             if(seatDom) {
                 seatDom.querySelector('.avatar-wrap svg').innerHTML = `<path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="${AVATAR_COLORS[userData.avatarIdx]}"/>`;
                 const nameSpan = seatDom.querySelector('.user-name');
-                nameSpan.innerText = username.split('_')[0]; // 去掉随机数后缀显示
+                nameSpan.innerText = username.split('_')[0]; 
                 nameSpan.style.color = "#ffffff";
                 if(!userData.isMuted) {
                     nameSpan.innerText += " 🎙️";
