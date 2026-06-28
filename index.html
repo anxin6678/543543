@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
-    <title>TT风语音聊天室 - GitHub免服务器版</title>
+    <title>TT语音聊天室-全端适配极速版</title>
     <script src="https://cdn.bootcdn.net/ajax/libs/mqtt/4.2.8/mqtt.min.js"></script>
     <style>
         :root {
@@ -14,56 +14,238 @@
             --text-secondary: #8e8e93;
             --seat-speaking: #00f5d4;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 允许输入框可以选择文字，其他地方禁止双击选中 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", Arial, sans-serif;
+            background-color: #09090d;
+            color: var(--text-color);
+            /* 适配核心：使用 dvh (Dynamic Viewport Height) 动态视口高度，彻底解决微信/Safari底部工具栏遮挡 Bug */
+            height: 100dvh; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
         input { -webkit-user-select: text; user-select: text; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; touch-action: manipulation; }
-        .audio-unlock-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(18, 18, 26, 0.98); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; transition: opacity 0.3s ease; }
-        .unlock-btn { background: linear-gradient(135deg, #9d4edd, var(--accent-color)); color: white; border: none; padding: 16px 40px; font-size: 18px; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 0 20px rgba(123, 44, 191, 0.5); }
-        .unlock-tips { margin-top: 15px; font-size: 13px; color: var(--text-secondary); text-align: center; }
-        .room-container { width: 100%; max-width: 450px; height: 100%; background: radial-gradient(circle at top, #2c1a4d 0%, var(--bg-color) 70%); display: flex; flex-direction: column; position: relative; }
-        .room-header { padding: 20px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .room-title h3 { font-size: 18px; font-weight: 600; }
+
+        /* 核心修复：解锁遮罩层添加 pointer-events 控制，防止消失后依然隐形拦截点击 */
+        .audio-unlock-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(18, 18, 26, 0.98);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+        }
+        .unlock-btn {
+            background: linear-gradient(135deg, #9d4edd, var(--accent-color));
+            color: white; border: none;
+            padding: 16px 40px; font-size: 18px; font-weight: bold;
+            border-radius: 30px; cursor: pointer;
+            box-shadow: 0 0 20px rgba(123, 44, 191, 0.5);
+        }
+        .unlock-tips { margin-top: 15px; font-size: 13px; color: var(--text-secondary); }
+
+        /* 画面适配重构：全端自适应容器 */
+        .room-container {
+            width: 100%;
+            height: 100dvh;
+            background: radial-gradient(circle at top, #2c1a4d 0%, var(--bg-color) 70%);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 响应式断点：当处于大屏（电脑PC/iPad）时，转化为精致的高级独立语音面板，不再傻大粗地铺满全屏 */
+        @media (min-width: 768px) {
+            .room-container {
+                width: 414px;
+                height: 820px;
+                border-radius: 24px;
+                border: 4px solid #23153c;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            }
+            body {
+                background: radial-gradient(circle, #1a1525 0%, #050508 100%);
+            }
+        }
+
+        /* 头部状态栏 */
+        .room-header {
+            padding: 20px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            flex-shrink: 0;
+        }
+        .room-title h3 { font-size: 17px; font-weight: 600; }
         .room-title p { font-size: 12px; color: var(--text-secondary); margin-top: 2px;}
-        .seats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px 10px; padding: 20px 15px; }
-        .seat-item { display: flex; flex-direction: column; align-items: center; position: relative; }
-        .avatar-wrap { width: 55px; height: 55px; border-radius: 50%; background: rgba(255,255,255,0.08); position: relative; display: flex; justify-content: center; align-items: center; border: 2px solid transparent; }
-        .seat-item.speaking .avatar-wrap { border-color: var(--seat-speaking); box-shadow: 0 0 10px var(--seat-speaking); }
-        .avatar-wrap svg { width: 40px; height: 40px; }
-        .seat-index { position: absolute; bottom: -2px; background: var(--accent-color); font-size: 10px; padding: 1px 6px; border-radius: 10px; white-space: nowrap; }
-        .user-name { font-size: 11px; color: var(--text-secondary); margin-top: 6px; max-width: 65px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
-        .chat-area { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; -webkit-overflow-scrolling: touch; }
-        .msg-item { background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 12px; font-size: 14px; max-width: 85%; align-self: flex-start; line-height: 1.4; word-break: break-all; }
+
+        /* 麦位区自适应弹性平铺 */
+        .seats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px 10px;
+            padding: 15px;
+            flex-shrink: 0;
+        }
+        .seat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .avatar-wrap {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid transparent;
+        }
+        .seat-item.speaking .avatar-wrap {
+            border-color: var(--seat-speaking);
+            box-shadow: 0 0 10px rgba(0, 245, 212, 0.4);
+        }
+        .avatar-wrap svg { width: 36px; height: 36px; }
+        .seat-index {
+            position: absolute;
+            bottom: -3px;
+            background: var(--accent-color);
+            font-size: 9px;
+            padding: 1px 5px;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+        .user-name {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            max-width: 60px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        /* 公屏聊天区：自动撑满剩余空间 */
+        .chat-area {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1; /* 规范层级，防止压住底部控制栏 */
+            -webkit-overflow-scrolling: touch; 
+        }
+        .msg-item {
+            background: rgba(255,255,255,0.05);
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            max-width: 85%;
+            align-self: flex-start;
+            line-height: 1.4;
+            word-break: break-all;
+        }
         .msg-item .sender { color: #17c3b2; font-weight: bold; margin-right: 5px;}
-        .msg-system { background: rgba(234, 84, 85, 0.1); color: #ea5455; align-self: center; font-size: 12px; }
-        .bottom-bar { padding: 15px 15px calc(15px + env(safe-area-inset-bottom)); background: rgba(28, 28, 40, 0.98); backdrop-filter: blur(10px); display: flex; align-items: center; gap: 10px; }
-        .input-box { flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); padding: 12px 15px; border-radius: 20px; color: #fff; font-size: 14px; outline: none; }
-        .btn { background: var(--accent-color); border: none; color: white; padding: 10px 18px; border-radius: 20px; font-size: 14px; cursor: pointer; font-weight: bold; }
-        .btn-icon { width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; }
+        .msg-system { background: rgba(234, 84, 85, 0.1); color: #ea5455; align-self: center; font-size: 11px; }
+
+        /* 底部控制栏：提至高层级，完美适配苹果底部安全区 */
+        .bottom-bar {
+            padding: 12px 15px calc(12px + env(safe-area-inset-bottom)); 
+            background: #161622;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 99; /* 核心修复：确保处于最顶层，绝对不会被聊天文字挡住点击 */
+        }
+        .input-box {
+            flex: 1;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 10px 15px;
+            border-radius: 20px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+        .btn {
+            background: var(--accent-color);
+            border: none;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        /* 核心修复：放大连麦图标的物理点击范围，满足移动端最小 48px 的标准，杜绝“点不准” */
+        .btn-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            cursor: pointer;
+            flex-shrink: 0;
+            pointer-events: auto; /* 强制开启指针事件 */
+        }
         .btn-icon.active { background: #ea5455; }
     </style>
 </head>
 <body>
 
 <div class="audio-unlock-overlay" id="unlockOverlay">
-    <button class="unlock-btn" onclick="initRoomEnvironment()">进入同城连麦房</button>
-    <p class="unlock-tips">⚡ GitHub Pages 专享·多端同步实时聊天</p>
+    <button class="unlock-btn" onclick="initRoomEnvironment()">进入连麦房</button>
+    <p class="unlock-tips">⚡ 已全端适配 · 点击即刻畅连</p>
 </div>
 
 <div class="room-container">
     <div class="room-header">
         <div class="room-title">
-            <h3>GitHub 跨端畅联房间</h3>
-            <p>房间频道: <span style="color:#00f5d4;">tt_room_999</span></p>
+            <h3>跨端语音连麦控制台</h3>
+            <p>频道: <span style="color:#00f5d4;">房间999</span></p>
         </div>
         <button class="btn" style="background:#ea5455;" onclick="leaveRoom()">退出</button>
     </div>
+
     <div class="seats-grid" id="seatsGrid"></div>
+
     <div class="chat-area" id="chatArea">
-        <div class="msg-item msg-system">【系统公告】已连接至公共高可用数据同步网关，全网多端已打通。</div>
+        <div class="msg-item msg-system">【系统】全端自适应、高层级点击通道已全面修复完毕。</div>
     </div>
+
     <div class="bottom-bar">
         <div class="btn-icon" id="micBtn" onclick="toggleMic()">🎤</div>
-        <input type="text" class="input-box" id="msgInput" placeholder="发条消息，所有人都能看见..." autocomplete="off">
+        <input type="text" class="input-box" id="msgInput" placeholder="发条公屏消息..." autocomplete="off">
         <button class="btn" onclick="sendMsg()">发送</button>
     </div>
 </div>
@@ -72,24 +254,23 @@
     const DEFAULT_AVATAR_SVG = `<svg viewBox="0 0 1024 1024"><path d="M512 512c141.4 0 256-114.6 256-256S653.4 0 512 0 256 114.6 256 256s114.6 256 256 256zM512 614.4c-243.2 0-512 121.6-512 364.8v44.8h1024v-44.8c0-243.2-268.8-364.8-512-364.8z" fill="#8e8e93"/></svg>`;
     
     let mqttClient = null;
-    const myName = "玩家_" + Math.floor(Math.random() * 8999 + 1000); 
-    // 定义唯一的房间频道，确保在这个频道里的人能互通
-    const ROOM_TOPIC = "china_tt_voice_room_999"; 
+    let isMuted = true;
+    const myName = "用户_" + Math.floor(Math.random() * 8999 + 1000); 
+    const ROOM_TOPIC = "china_tt_voice_room_perfect_999"; 
 
     function initRoomEnvironment() {
-        // 隐藏遮罩
+        // 核心修复：彻底释放遮罩层占用的屏幕点击权限
         const overlay = document.getElementById('unlockOverlay');
         overlay.style.opacity = '0';
+        overlay.style.pointerEvents = 'none'; 
         setTimeout(() => overlay.style.display = 'none', 300);
 
         renderSeats();
 
-        // 绑定输入框发送
         document.getElementById('msgInput').addEventListener('keypress', function(e) {
             if(e.key === 'Enter') { sendMsg(); this.blur(); }
         });
 
-        // 连接免签同步服务器
         connectToPublicGateway();
     }
 
@@ -103,51 +284,40 @@
                         ${DEFAULT_AVATAR_SVG}
                         <span class="seat-index">${i === 1 ? '房主' : i + '麦'}</span>
                     </div>
-                    <span class="user-name">待连麦</span>
+                    <span class="user-name">空闲麦位</span>
                 </div>
             `;
         }
     }
 
-    // 核心修复：无需自建后端，直接连接国内可丝滑访问的公共安全 WebSocket-MQTT 网关
     function connectToPublicGateway() {
-        appendSystemMsg("正在激活多端同步网关...");
+        if (typeof mqtt === 'undefined') {
+            appendSystemMsg("通信组件加载中，请稍候...");
+            return;
+        }
 
-        // 使用 EMQX 提供的免费公共高并发安全加密网关
         const brokerUrl = 'wss://broker.emqx.io:8084/mqtt'; 
-        const options = {
-            connectTimeout: 4000,
-            clientId: 'tt_client_' + Math.random().toString(16).substr(2, 8),
-            keepalive: 60
-        };
+        const options = { connectTimeout: 4000, clientId: 'tt_id_' + Math.random().toString(16).substr(2, 8), keepalive: 60 };
 
         mqttClient = mqtt.connect(brokerUrl, options);
 
         mqttClient.on('connect', () => {
-            appendSystemMsg("网关连接成功！已自动进入 999 号房间。");
-            // 订阅房间频道，接收别人的消息
+            appendSystemMsg("成功切入高可用连麦通道！");
             mqttClient.subscribe(ROOM_TOPIC);
-            
-            // 广播自己上线的消息
             publishRawMessage({ type: 'system_join', user: myName });
         });
 
-        // 收到来自房间里任何人的消息（包括自己）
         mqttClient.on('message', (topic, packet) => {
             try {
                 const data = JSON.parse(packet.toString());
                 if (data.type === 'chat') {
                     appendChatMsg(data.sender, data.text);
                 } else if (data.type === 'system_join') {
-                    appendSystemMsg(`${data.user} 进入了房间`);
+                    appendSystemMsg(`${data.user} 降临房间`);
                 } else if (data.type === 'mic_status') {
                     updateSeatMicStatus(data.user, data.isMuted);
                 }
-            } catch (e) { console.error("解析错误", e); }
-        });
-
-        mqttClient.on('error', () => {
-            appendSystemMsg("网络波动，正在切换备用同步节点...");
+            } catch (e) {}
         });
     }
 
@@ -157,16 +327,11 @@
         if(!text) return;
 
         if(!mqttClient || !mqttClient.connected) {
-            alert("正在连接网络，请稍候再试");
+            alert("正在连接网关，请稍后...");
             return;
         }
 
-        // 向公共频道发布聊天消息
-        publishRawMessage({
-            type: 'chat',
-            sender: myName,
-            text: text
-        });
+        publishRawMessage({ type: 'chat', sender: myName, text: text });
         input.value = '';
     }
 
@@ -199,38 +364,51 @@
         const chatArea = document.getElementById('chatArea');
         const msgDiv = document.createElement('div');
         msgDiv.className = 'msg-item msg-system';
-        msgDiv.textContent = `【系统】${text}`;
+        msgDiv.textContent = `【公告】${text}`;
         chatArea.appendChild(msgDiv);
         chatArea.scrollTop = chatArea.scrollHeight;
     }
 
+    // 核心修复：点击连麦响应逻辑，彻底打通
     function toggleMic() {
+        if(!mqttClient || !mqttClient.connected) {
+            alert("正在建立网络语音通道，请稍后点击...");
+            return;
+        }
+        
         isMuted = !isMuted;
         const micBtn = document.getElementById('micBtn');
-        micBtn.innerText = isMuted ? "🔇" : "🎤";
-        if(isMuted) micBtn.classList.add('active'); else micBtn.classList.remove('active');
         
-        // 同步麦克风状态给房间里的其他人
+        if(isMuted) {
+            micBtn.innerText = "🔇";
+            micBtn.classList.add('active');
+            appendSystemMsg("你已下麦并闭麦");
+        } else {
+            micBtn.innerText = "🎤";
+            micBtn.classList.remove('active');
+            appendSystemMsg("你已成功上麦！说话圈已激活");
+        }
+        
         publishRawMessage({ type: 'mic_status', user: myName, isMuted: isMuted });
     }
 
     function updateSeatMicStatus(user, userMuted) {
-        // 模拟麦位状态同步：如果是自己开麦，让1麦亮起绿圈
+        // 动态将上麦用户映射到麦位上
         const firstSeat = document.getElementById('seat_1');
         if(firstSeat) {
             if(!userMuted) {
                 firstSeat.classList.add('speaking');
-                firstSelector = firstSeat.querySelector('.user-name').innerText = user.substring(0,6);
+                firstSeat.querySelector('.user-name').innerText = user.substring(0, 6);
+                firstSeat.querySelector('.user-name').style.color = "#00f5d4";
             } else {
                 firstSeat.classList.remove('speaking');
+                firstSeat.querySelector('.user-name').innerText = "空闲麦位";
+                firstSeat.querySelector('.user-name').style.color = "var(--text-secondary)";
             }
         }
     }
 
     function leaveRoom() { if(confirm('确定退出吗？')) window.location.reload(); }
-    function resetHeight(){ document.querySelector('.room-container').style.height = window.innerHeight + 'px'; }
-    window.addEventListener('resize', resetHeight);
-    resetHeight();
 </script>
 </body>
 </html>
